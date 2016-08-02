@@ -6,6 +6,9 @@ go:
  - 1.6
 # - release
 # - tip
+#
+git:
+ submodules: true
 
 script:
  - make test
