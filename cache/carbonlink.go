@@ -11,9 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/lomik/go-carbon/helper"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/points"
 )
 
@@ -271,7 +270,7 @@ func (listener *CarbonlinkListener) HandleConnection(conn net.Conn) {
 		reqData, err := ReadCarbonlinkRequest(reader)
 		if err != nil {
 			conn.(*net.TCPConn).SetLinger(0)
-			logrus.Debugf("[carbonlink] read carbonlink request from %s: %s", conn.RemoteAddr().String(), err.Error())
+			log.Debugf("[carbonlink] read carbonlink request from %s: %s", conn.RemoteAddr().String(), err.Error())
 			break
 		}
 
@@ -279,12 +278,12 @@ func (listener *CarbonlinkListener) HandleConnection(conn net.Conn) {
 
 		if err != nil {
 			conn.(*net.TCPConn).SetLinger(0)
-			logrus.Warningf("[carbonlink] parse carbonlink request from %s: %s", conn.RemoteAddr().String(), err.Error())
+			log.Warningf("[carbonlink] parse carbonlink request from %s: %s", conn.RemoteAddr().String(), err.Error())
 			break
 		}
 		if req != nil {
 			if req.Type != "cache-query" {
-				logrus.Warningf("[carbonlink] unknown query type: %#v", req.Type)
+				log.Warningf("[carbonlink] unknown query type: %#v", req.Type)
 				buf := bytes.NewBuffer([]byte(fmt.Sprintf("\x00\x00\x00\x00\x80\x02}q\x00U\x05errorq\x01U\x1aInvalid request type %qq\x02s.", req.Type)))
 				result := buf.Bytes()
 				binary.BigEndian.PutUint32(result[:4], uint32(buf.Len()-4))
@@ -300,7 +299,7 @@ func (listener *CarbonlinkListener) HandleConnection(conn net.Conn) {
 				case <-query.Wait:
 					// pass
 				case <-time.After(listener.queryTimeout):
-					logrus.Infof("[carbonlink] Cache no reply (%s timeout)", listener.queryTimeout)
+					log.Infof("[carbonlink] Cache no reply (%s timeout)", listener.queryTimeout)
 					query = nil // empty reply
 				}
 
@@ -309,7 +308,7 @@ func (listener *CarbonlinkListener) HandleConnection(conn net.Conn) {
 					break
 				}
 				if _, err := conn.Write(packed); err != nil {
-					logrus.Infof("[carbonlink] reply error: %s", err)
+					log.Infof("[carbonlink] reply error: %s", err)
 					break
 				}
 				// pp.Println(reply)
@@ -353,7 +352,7 @@ func (listener *CarbonlinkListener) Listen(addr *net.TCPAddr) error {
 					if strings.Contains(err.Error(), "use of closed network connection") {
 						break
 					}
-					logrus.Warningf("[carbonlink] Failed to accept connection: %s", err)
+					log.Warningf("[carbonlink] Failed to accept connection: %s", err)
 					continue
 				}
 

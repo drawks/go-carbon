@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/lomik/go-carbon/helper"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/points"
-
-	"github.com/Sirupsen/logrus"
 )
 
 // UDP receive metrics from UDP socket
@@ -108,7 +107,7 @@ func logIncomplete(peer *net.UDPAddr, message []byte, lastLine []byte) {
 	p1 := bytes.IndexByte(message, 0xa) // find first "\n"
 
 	if p1 != -1 && p1+len(lastLine) < len(message)-10 { // print short version
-		logrus.Warningf(
+		log.Warningf(
 			"[udp] incomplete message from %s: \"%s\\n...(%d bytes)...\\n%s\"",
 			peer.String(),
 			string(message[:p1]),
@@ -116,7 +115,7 @@ func logIncomplete(peer *net.UDPAddr, message []byte, lastLine []byte) {
 			string(lastLine),
 		)
 	} else { // print full
-		logrus.Warningf(
+		log.Warningf(
 			"[udp] incomplete message from %s: %#v",
 			peer.String(),
 			string(message),
@@ -154,7 +153,7 @@ func (rcv *UDP) receiveWorker(exit chan bool) {
 				break
 			}
 			atomic.AddUint32(&rcv.errors, 1)
-			logrus.Error(err)
+			log.Error(err)
 			continue
 		}
 
@@ -183,14 +182,14 @@ func (rcv *UDP) receiveWorker(exit chan bool) {
 					}
 				} else {
 					atomic.AddUint32(&rcv.errors, 1)
-					logrus.Error(err)
+					log.Error(err)
 				}
 				break
 			}
 			if len(line) > 0 { // skip empty lines
 				if msg, err := points.ParseText(string(line)); err != nil {
 					atomic.AddUint32(&rcv.errors, 1)
-					logrus.Info(err)
+					log.Info(err)
 				} else {
 					atomic.AddUint32(&rcv.metricsReceived, 1)
 					rcv.out <- msg

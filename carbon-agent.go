@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -13,9 +12,8 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/go-carbon/carbon"
-	"github.com/lomik/go-carbon/logging"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/sevlyar/go-daemon"
 )
 
@@ -37,6 +35,26 @@ func httpServe(addr string) (func(), error) {
 
 	go http.Serve(listener, nil)
 	return func() { listener.Close() }, nil
+}
+
+func init() {
+	// signal watcher
+	signalChan := make(chan os.Signal, 16)
+	signal.Notify(signalChan, syscall.SIGHUP)
+
+	go func() {
+		for {
+			select {
+			case <-signalChan:
+				std := log.StandardLogger()
+				err := std.Reopen()
+				log.Infof("HUP received, reopen log %#v", std.Filename())
+				if err != nil {
+					log.Errorf("Reopen log %#v failed: %s", std.Filename(), err.Error())
+				}
+			}
+		}
+	}()
 }
 
 func main() {
@@ -83,7 +101,7 @@ func main() {
 		}
 	}
 
-	if err := logging.SetLevel(cfg.Common.LogLevel); err != nil {
+	if err := log.SetLevel(cfg.Common.LogLevel); err != nil {
 		log.Fatal(err)
 	}
 
@@ -92,12 +110,12 @@ func main() {
 		return
 	}
 
-	if err := logging.PrepareFile(cfg.Common.Logfile, runAsUser); err != nil {
-		logrus.Fatal(err)
+	if err := log.PrepareFile(cfg.Common.Logfile, runAsUser); err != nil {
+		log.Fatal(err)
 	}
 
-	if err := logging.SetFile(cfg.Common.Logfile); err != nil {
-		logrus.Fatal(err)
+	if err := log.SetFile(cfg.Common.Logfile); err != nil {
+		log.Fatal(err)
 	}
 
 	if *isDaemon {
@@ -145,14 +163,14 @@ func main() {
 	if cfg.Pprof.Enabled {
 		httpStop, err = httpServe(cfg.Pprof.Listen)
 		if err != nil {
-			logrus.Fatal(err)
+			log.Fatal(err)
 		}
 	}
 
 	if err = app.Start(); err != nil {
-		logrus.Fatal(err)
+		log.Fatal(err)
 	} else {
-		logrus.Info("started")
+		log.Info("started")
 	}
 
 	go func() {
@@ -168,16 +186,16 @@ func main() {
 		signal.Notify(c, syscall.SIGHUP)
 		for {
 			<-c
-			logrus.Info("HUP received. Reload config")
+			log.Info("HUP received. Reload config")
 			if err := app.ReloadConfig(); err != nil {
-				logrus.Errorf("Config reload failed: %s", err.Error())
+				log.Errorf("Config reload failed: %s", err.Error())
 			} else {
-				logrus.Info("Config successfully reloaded")
+				log.Info("Config successfully reloaded")
 			}
 		}
 	}()
 
 	app.Loop()
 
-	logrus.Info("stopped")
+	log.Info("stopped")
 }

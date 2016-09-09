@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/persister"
 	"github.com/lomik/go-carbon/points"
 )
@@ -24,7 +24,7 @@ func (app *App) GraceStop() {
 	if app.Config.Dump.Enabled {
 		err := app.GraceStopDump()
 		if err != nil {
-			logrus.Fatal(err)
+			log.Fatal(err)
 		}
 
 		app.stopAll()
@@ -35,7 +35,7 @@ func (app *App) GraceStop() {
 	app.Lock()
 	defer app.Unlock()
 
-	logrus.Info("grace stop inited")
+	log.Info("grace stop inited")
 
 	app.stopListeners()
 
@@ -43,18 +43,18 @@ func (app *App) GraceStop() {
 	if app.Cache != nil && app.Persister != nil {
 
 		if app.Persister.GetMaxUpdatesPerSecond() > 0 {
-			logrus.Debug("[persister] stop old throttled persister, start new unlimited")
+			log.Debug("[persister] stop old throttled persister, start new unlimited")
 			app.Persister.Stop()
-			logrus.Debug("[persister] old persister finished")
+			log.Debug("[persister] old persister finished")
 			app.Persister.SetMaxUpdatesPerSecond(0)
 			app.Persister.Start()
-			logrus.Debug("[persister] new persister started")
+			log.Debug("[persister] new persister started")
 		}
 		// @TODO: disable throttling in persister
 
 		flushStart := time.Now()
 
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"size":     app.Cache.Size(),
 			"inputLen": len(app.Cache.In()),
 		}).Info("[cache] start flush")
@@ -73,7 +73,7 @@ func (app *App) GraceStop() {
 					break FlushLoop
 				}
 			case <-statTicker.C:
-				logrus.WithFields(logrus.Fields{
+				log.WithFields(log.Fields{
 					"size":     app.Cache.Size(),
 					"inputLen": len(app.Cache.In()),
 				}).Info("[cache] flush checkpoint")
@@ -81,7 +81,7 @@ func (app *App) GraceStop() {
 		}
 
 		flushWorktime := time.Now().Sub(flushStart)
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"time": flushWorktime.String(),
 		}).Info("[cache] finish flush")
 	}
@@ -100,15 +100,15 @@ func (app *App) GraceStopDump() error {
 	app.Lock()
 	defer app.Unlock()
 
-	logrus.Info("grace stop with dump inited")
+	log.Info("grace stop with dump inited")
 
 	filenamePostfix := fmt.Sprintf("%d.%d", os.Getpid(), time.Now().UnixNano())
 	snapFilename := path.Join(app.Config.Dump.Path, fmt.Sprintf("cache.%s", filenamePostfix))
 	xlogFilename := path.Join(app.Config.Dump.Path, fmt.Sprintf("input.%s", filenamePostfix))
 
 	// start dumpers
-	logrus.Infof("start cache dump to %s", snapFilename)
-	logrus.Infof("start input dump to %s", xlogFilename)
+	log.Infof("start cache dump to %s", snapFilename)
+	log.Infof("start input dump to %s", xlogFilename)
 
 	// open snap file
 	snap, err := os.Create(snapFilename)
@@ -137,14 +137,14 @@ func (app *App) GraceStopDump() error {
 	}()
 
 	// stop cache
-	logrus.Info("[cache] stop worker")
+	log.Info("[cache] stop worker")
 	dumpStart := time.Now()
 
 	app.Cache.Stop()
 	cacheOut := app.Cache.Out()
 	close(cacheOut)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"size":    app.Cache.Size(),
 		"outSize": len(cacheOut),
 	}).Info("[cache] start dump")
@@ -161,7 +161,7 @@ func (app *App) GraceStopDump() error {
 	}
 
 	dumpWorktime := time.Now().Sub(dumpStart)
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"time": dumpWorktime.String(),
 	}).Info("[cache] finish dump")
 
@@ -174,7 +174,7 @@ func (app *App) GraceStopDump() error {
 	}
 
 	// cache dump finished
-	logrus.Info("stop listeners")
+	log.Info("stop listeners")
 	app.stopListeners()
 
 	// wait for all data from input channel written
@@ -192,7 +192,7 @@ FlushLoop:
 				break FlushLoop
 			}
 		case <-statTicker.C:
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"inputLen": len(app.Cache.In()),
 			}).Info("[cache] wait input")
 		}
@@ -210,7 +210,7 @@ FlushLoop:
 		return err
 	}
 
-	logrus.Info("dump finished")
+	log.Info("dump finished")
 
 	return nil
 }
@@ -220,12 +220,12 @@ func RestoreFromFile(filename string, out chan *points.Points) error {
 	var pointsCount int
 	startTime := time.Now()
 
-	logrus.Infof("[restore] start %s", filename)
+	log.Infof("[restore] start %s", filename)
 
 	defer func() {
 		finishTime := time.Now()
 
-		logrus.
+		log.
 			WithField("points", pointsCount).
 			WithField("time", finishTime.Sub(startTime).String()).
 			Infof("[restore] finish %s", filename)
@@ -253,7 +253,7 @@ func RestoreFromFile(filename string, out chan *points.Points) error {
 			p, err := points.ParseText(string(line))
 
 			if err != nil {
-				logrus.Warnf("[restore] wrong message %#v", string(line))
+				log.Warnf("[restore] wrong message %#v", string(line))
 			} else {
 				pointsCount++
 				out <- p
@@ -269,12 +269,12 @@ func RestoreFromDir(dumpDir string, out chan *points.Points) {
 	startTime := time.Now()
 	defer func() {
 		finishTime := time.Now()
-		logrus.WithField("time", finishTime.Sub(startTime).String()).Info("[restore] finished")
+		log.WithField("time", finishTime.Sub(startTime).String()).Info("[restore] finished")
 	}()
 
 	files, err := ioutil.ReadDir(dumpDir)
 	if err != nil {
-		logrus.Errorf("readdir %s failed: %s", dumpDir, err.Error())
+		log.Errorf("readdir %s failed: %s", dumpDir, err.Error())
 		return
 	}
 
@@ -307,7 +307,7 @@ FilesLoop:
 	}
 
 	if len(list) == 0 {
-		logrus.Infof("[restore] nothing to do from %s", dumpDir)
+		log.Infof("[restore] nothing to do from %s", dumpDir)
 		return
 	}
 
@@ -317,18 +317,18 @@ FilesLoop:
 		list[index] = strings.SplitN(fileWithSortPrefix, ":", 2)[1]
 	}
 
-	logrus.WithField("files", list).Infof("[restore] start from %s", dumpDir)
+	log.WithField("files", list).Infof("[restore] start from %s", dumpDir)
 
 	for _, fn := range list {
 		filename := path.Join(dumpDir, fn)
 		err := RestoreFromFile(filename, out)
 		if err != nil {
-			logrus.Errorf("[restore] read %s failed: %s", filename, err.Error())
+			log.Errorf("[restore] read %s failed: %s", filename, err.Error())
 		}
 
 		err = os.Remove(filename)
 		if err != nil {
-			logrus.Errorf("[restore] remove %s failed: %s", filename, err.Error())
+			log.Errorf("[restore] remove %s failed: %s", filename, err.Error())
 		}
 	}
 }

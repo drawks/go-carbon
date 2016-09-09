@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/alyu/configparser"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-whisper"
 )
 
@@ -68,14 +68,14 @@ func ReadWhisperAggregation(file string) (*WhisperAggregation, error) {
 
 		item.pattern, err = regexp.Compile(s.ValueOf("pattern"))
 		if err != nil {
-			logrus.Errorf("[persister] Failed to parse pattern '%s'for [%s]: %s",
+			log.Errorf("[persister] Failed to parse pattern '%s'for [%s]: %s",
 				s.ValueOf("pattern"), item.name, err.Error())
 			return nil, err
 		}
 
 		item.xFilesFactor, err = strconv.ParseFloat(s.ValueOf("xFilesFactor"), 64)
 		if err != nil {
-			logrus.Errorf("failed to parse xFilesFactor '%s' in %s: %s",
+			log.Errorf("failed to parse xFilesFactor '%s' in %s: %s",
 				s.ValueOf("xFilesFactor"), item.name, err.Error())
 			continue
 		}
@@ -93,12 +93,12 @@ func ReadWhisperAggregation(file string) (*WhisperAggregation, error) {
 		case "min":
 			item.aggregationMethod = whisper.Min
 		default:
-			logrus.Errorf("unknown aggregation method '%s'",
+			log.Errorf("unknown aggregation method '%s'",
 				s.ValueOf("aggregationMethod"))
 			continue
 		}
 
-		logrus.Debugf("[persister] Adding aggregation [%s] pattern = %s aggregationMethod = %s xFilesFactor = %f",
+		log.Debugf("[persister] Adding aggregation [%s] pattern = %s aggregationMethod = %s xFilesFactor = %f",
 			item.name, s.ValueOf("pattern"),
 			item.aggregationMethodStr, item.xFilesFactor)
 

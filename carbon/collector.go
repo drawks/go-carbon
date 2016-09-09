@@ -6,9 +6,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/lomik/go-carbon/helper"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/points"
 )
 
@@ -49,7 +48,7 @@ func NewCollector(app *App) *Collector {
 
 	endpoint, err := url.Parse(c.endpoint)
 	if err != nil {
-		logrus.Errorf("[stat] metric-endpoint parse error: %s", err.Error())
+		log.Errorf("[stat] metric-endpoint parse error: %s", err.Error())
 		c.endpoint = MetricEndpointLocal
 	}
 
@@ -105,21 +104,21 @@ func NewCollector(app *App) *Collector {
 
 					conn, err = net.DialTimeout(endpoint.Scheme, endpoint.Host, defaultTimeout)
 					if err != nil {
-						logrus.Errorf("[stat] dial %s failed: %s", c.endpoint, err.Error())
+						log.Errorf("[stat] dial %s failed: %s", c.endpoint, err.Error())
 						time.Sleep(time.Second)
 						continue SendLoop
 					}
 
 					err = conn.SetDeadline(time.Now().Add(defaultTimeout))
 					if err != nil {
-						logrus.Errorf("[stat] conn.SetDeadline failed: %s", err.Error())
+						log.Errorf("[stat] conn.SetDeadline failed: %s", err.Error())
 						time.Sleep(time.Second)
 						continue SendLoop
 					}
 
 					_, err := conn.Write(chunk)
 					if err != nil {
-						logrus.Errorf("[stat] conn.Write failed: %s", err.Error())
+						log.Errorf("[stat] conn.Write failed: %s", err.Error())
 						time.Sleep(time.Second)
 						continue SendLoop
 					}
@@ -148,12 +147,12 @@ func (c *Collector) collect() {
 	statModule := func(module string) func(metric string, value float64) {
 		return func(metric string, value float64) {
 			key := fmt.Sprintf("%s.%s.%s", c.graphPrefix, module, metric)
-			logrus.Infof("[stat] %s=%#v", key, value)
+			log.Infof("[stat] %s=%#v", key, value)
 			select {
 			case c.data <- points.NowPoint(key, value):
 				// pass
 			default:
-				logrus.WithField("key", key).WithField("value", value).
+				log.WithField("key", key).WithField("value", value).
 					Warn("[stat] send queue is full. Metric dropped")
 			}
 		}

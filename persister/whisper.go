@@ -9,10 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/go-whisper"
 
 	"github.com/lomik/go-carbon/helper"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/points"
 )
 
@@ -83,23 +83,23 @@ func store(p *Whisper, values *points.Points) {
 	if err != nil {
 		// create new whisper if file not exists
 		if !os.IsNotExist(err) {
-			logrus.Errorf("[persister] Failed to open whisper file %s: %s", path, err.Error())
+			log.Errorf("[persister] Failed to open whisper file %s: %s", path, err.Error())
 			return
 		}
 
 		schema, ok := p.schemas.Match(values.Metric)
 		if !ok {
-			logrus.Errorf("[persister] No storage schema defined for %s", values.Metric)
+			log.Errorf("[persister] No storage schema defined for %s", values.Metric)
 			return
 		}
 
 		aggr := p.aggregation.match(values.Metric)
 		if aggr == nil {
-			logrus.Errorf("[persister] No storage aggregation defined for %s", values.Metric)
+			log.Errorf("[persister] No storage aggregation defined for %s", values.Metric)
 			return
 		}
 
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"retention":    schema.RetentionStr,
 			"schema":       schema.Name,
 			"aggregation":  aggr.name,
@@ -108,7 +108,7 @@ func store(p *Whisper, values *points.Points) {
 		}).Debugf("[persister] Creating %s", path)
 
 		if err = os.MkdirAll(filepath.Dir(path), os.ModeDir|os.ModePerm); err != nil {
-			logrus.Error(err)
+			log.Error(err)
 			return
 		}
 
@@ -116,7 +116,7 @@ func store(p *Whisper, values *points.Points) {
 			Sparse: p.sparse,
 		})
 		if err != nil {
-			logrus.Errorf("[persister] Failed to create new whisper file %s: %s", path, err.Error())
+			log.Errorf("[persister] Failed to create new whisper file %s: %s", path, err.Error())
 			return
 		}
 
@@ -135,7 +135,7 @@ func store(p *Whisper, values *points.Points) {
 
 	defer func() {
 		if r := recover(); r != nil {
-			logrus.Errorf("[persister] UpdateMany %s recovered: %s", path, r)
+			log.Errorf("[persister] UpdateMany %s recovered: %s", path, r)
 		}
 	}()
 	w.UpdateMany(points)

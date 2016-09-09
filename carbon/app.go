@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/lomik/go-carbon/cache"
+	log "github.com/lomik/go-carbon/logging"
 	"github.com/lomik/go-carbon/persister"
 	"github.com/lomik/go-carbon/receiver"
 )
@@ -136,25 +136,25 @@ func (app *App) stopListeners() {
 	if app.TCP != nil {
 		app.TCP.Stop()
 		app.TCP = nil
-		logrus.Debug("[tcp] finished")
+		log.Debug("[tcp] finished")
 	}
 
 	if app.Pickle != nil {
 		app.Pickle.Stop()
 		app.Pickle = nil
-		logrus.Debug("[pickle] finished")
+		log.Debug("[pickle] finished")
 	}
 
 	if app.UDP != nil {
 		app.UDP.Stop()
 		app.UDP = nil
-		logrus.Debug("[udp] finished")
+		log.Debug("[udp] finished")
 	}
 
 	if app.CarbonLink != nil {
 		app.CarbonLink.Stop()
 		app.CarbonLink = nil
-		logrus.Debug("[carbonlink] finished")
+		log.Debug("[carbonlink] finished")
 	}
 }
 
@@ -164,25 +164,25 @@ func (app *App) stopAll() {
 	if app.Persister != nil {
 		app.Persister.Stop()
 		app.Persister = nil
-		logrus.Debug("[persister] finished")
+		log.Debug("[persister] finished")
 	}
 
 	if app.Cache != nil {
 		app.Cache.Stop()
 		app.Cache = nil
-		logrus.Debug("[cache] finished")
+		log.Debug("[cache] finished")
 	}
 
 	if app.Collector != nil {
 		app.Collector.Stop()
 		app.Collector = nil
-		logrus.Debug("[stat] finished")
+		log.Debug("[stat] finished")
 	}
 
 	if app.exit != nil {
 		close(app.exit)
 		app.exit = nil
-		logrus.Debug("[app] close(exit)")
+		log.Debug("[app] close(exit)")
 	}
 }
 
